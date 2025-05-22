@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gomoku - Two Player</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <h2>🏆 Win History</h2>
+    <div class="history">
+      <p id="winsPlayer1">⚫ Player 1 (Black): 0</p>
+      <p id="winsPlayer2">🔵 Player 2 (Blue): 0</p>
+    </div>
+    <button class="about-btn" onclick="showAbout()">📜 About Game</button>
+    <br><br>
+    <button onclick="toggleDarkMode()">🌓 Toggle Dark Mode</button>
+  </div>
+
+  <div class="container">
+    <h1>Gomoku</h1>
+
+    <div class="controls">
+      <input id="player1" type="text" placeholder="Player 1 (Black)" value="Player 1">
+      <input id="player2" type="text" placeholder="Player 2 (Blue)" value="Player 2">
+      <button id="undo">Undo</button>
+      <button id="restart">Restart</button>
+    </div>
+
+    <div id="status">Current Turn: ⚫ Player 1 (Black)</div>
+    <div id="board"></div>
+  </div>
+
+  <!-- Audio and Confetti -->
+  <audio id="placeSound" src="Placing_Stone.mp3" preload="auto"></audio>
+  <audio id="winSound" src="Victory_Sound.mp3" preload="auto"></audio>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Custom Popup -->
+  <div class="overlay" id="popup-overlay">
+    <div class="popup">
+      <div class="popup-content" id="popup-message"></div>
+      <button class="popup-button" id="popup-close">OK</button>
+    </div>
+  </div>
+
+  <script>
+    const boardSize = 15;
+    const board = document.getElementById("board");
+    const status = document.getElementById("status");
+    const undoBtn = document.getElementById("undo");
+    const restartBtn = document.getElementById("restart");
+    const player1Input = document.getElementById("player1");
+    const player2Input = document.getElementById("player2");
+    const placeSound = document.getElementById("placeSound");
+    const winSound = document.getElementById("winSound");
+    const winsPlayer1 = document.getElementById("winsPlayer1");
+    const winsPlayer2 = document.getElementById("winsPlayer2");
+    
+    // Popup elements
+    const overlay = document.getElementById("popup-overlay");
+    const popupMessage = document.getElementById("popup-message");
+    const popupClose = document.getElementById("popup-close");
+
+    let currentPlayer = 'black';
+    let gameOver = false;
+    let grid = [];
+    let history = [];
+    let winCounts = { black: 0, white: 0 };
+    let confettiInterval = null;
+
+    // Custom popup functions
+    function showPopup(message, type = "default") {
+      popupMessage.textContent = message;
+      overlay.classList.add("active");
+      
+      // Reset classes
+      overlay.classList.remove("win-popup", "about-popup");
+      
+      // Add specific class based on type
+      if (type === "win") {
+        overlay.classList.add("win-popup");
+      } else if (type === "about") {
+        overlay.classList.add("about-popup");
+      }
+    }
+
+    function closePopup() {
+      overlay.classList.remove("active");
+    }
+
+    popupClose.addEventListener("click", closePopup);
+
+    function createBoard() {
+      board.innerHTML = '';
+      grid = [];
+      history = [];
+      for (let y = 0; y < boardSize; y++) {
+        const row = [];
+        for (let x = 0; x < boardSize; x++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+          cell.addEventListener('click', handleMove);
+          board.appendChild(cell);
+          row.push('');
+        }
+        grid.push(row);
+      }
+    }
+
+    function handleMove(e) {
+      if (gameOver) return;
+      const x = +e.target.dataset.x;
+      const y = +e.target.dataset.y;
+      if (grid[y][x] !== '') return;
+
+      const stone = document.createElement('div');
+      stone.classList.add('stone', currentPlayer);
+      e.target.appendChild(stone);
+      grid[y][x] = currentPlayer;
+      history.push({ x, y, player: currentPlayer });
+
+      placeSound.currentTime = 0;
+      placeSound.play();
+
+      const winningCells = checkWin(x, y);
+      if (winningCells) {
+        highlightWinningCells(winningCells);
+        const winnerName = currentPlayer === 'black' ? player1Input.value : player2Input.value;
+        const emoji = currentPlayer === 'black' ? '⚫' : '🔵';
+        status.textContent = `${emoji} ${winnerName} wins! 🎉`;
+        winSound.currentTime = 0;
+        winSound.play();
+        winCounts[currentPlayer]++;
+        winsPlayer1.textContent = `⚫ ${player1Input.value} (Black): ${winCounts.black}`;
+        winsPlayer2.textContent = `🔵 ${player2Input.value} (Blue): ${winCounts.white}`;
+
+        showPopup(`${emoji} ${winnerName} wins! 🎉`, "win");
+
+        gameOver = true;
+        startConfetti();
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+      const emoji = currentPlayer === 'black' ? '⚫' : '🔵';
+      const playerName = currentPlayer === 'black' ? player1Input.value : player2Input.value;
+      status.textContent = `Current Turn: ${emoji} ${playerName} (${currentPlayer === 'black' ? 'Black' : 'Blue'})`;
+    }
+
+    function highlightWinningCells(cells) {
+      cells.forEach(({ x, y }) => {
+        const cell = document.querySelector(`.cell[data-x='${x}'][data-y='${y}']`);
+        if (cell) cell.firstChild.classList.add('highlight');
+      });
+    }
+
+    function checkWin(x, y) {
+      const directions = [
+        [1, 0], [0, 1], [1, 1], [1, -1]
+      ];
+      for (const [dx, dy] of directions) {
+        const line = [{ x, y }];
+        for (let dir = -1; dir <= 1; dir += 2) {
+          let nx = x + dx * dir;
+          let ny = y + dy * dir;
+          while (
+            nx >= 0 && ny >= 0 && nx < boardSize && ny < boardSize &&
+            grid[ny][nx] === currentPlayer
+          ) {
+            line.push({ x: nx, y: ny });
+            nx += dx * dir;
+            ny += dy * dir;
+          }
+        }
+        if (line.length >= 5) return line;
+      }
+      return null;
+    }
+
+    function startConfetti() {
+      confettiInterval = setInterval(() => {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }, 500);
+    }
+
+    function stopConfetti() {
+      if (confettiInterval) {
+        clearInterval(confettiInterval);
+        confettiInterval = null;
+      }
+    }
+
+    function showAbout() {
+      showPopup("📜 Gomoku (Five in a Row) - Game Rules 📜\n\n" +
+                "🎮 Basic Rules:\n" +
+                "• Two players take turns placing stones on a 15×15 grid board\n" +
+                "• ⚫ Player 1 uses black stones\n" +
+                "• 🔵 Player 2 uses blue stones\n\n" +
+                "🏆 How to Win:\n" +
+                "• Create an unbroken row of EXACTLY 5 stones horizontally ➡️\n" +
+                "• Create an unbroken row of EXACTLY 5 stones vertically ⬇️\n" +
+                "• Create an unbroken row of EXACTLY 5 stones diagonally ↘️ or ↗️\n\n" +
+                "⚠️ Important Rules:\n" +
+                "• First player to place 5 stones in a row wins immediately\n" +
+                "• There is no capturing in this version\n" +
+                "• Stones cannot be moved once placed\n" +
+                "• No restrictions on first move placement\n\n" +
+                "🧠 Strategy Tips:\n" +
+                "• Block your opponent's potential winning moves\n" +
+                "• Try to create multiple threats at once\n" +
+                "• Control the center area when possible", "about");
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark');
+    }
+
+    undoBtn.addEventListener('click', () => {
+      if (history.length === 0 || gameOver) return;
+      const last = history.pop();
+      grid[last.y][last.x] = '';
+      const cell = document.querySelector(`.cell[data-x='${last.x}'][data-y='${last.y}']`);
+      if (cell && cell.firstChild) cell.removeChild(cell.firstChild);
+      currentPlayer = last.player;
+      const emoji = currentPlayer === 'black' ? '⚫' : '🔵';
+      const playerName = currentPlayer === 'black' ? player1Input.value : player2Input.value;
+      status.textContent = `Current Turn: ${emoji} ${playerName} (${currentPlayer === 'black' ? 'Black' : 'Blue'})`;
+    });
+
+    restartBtn.addEventListener('click', () => {
+      currentPlayer = 'black';
+      gameOver = false;
+      status.textContent = `Current Turn: ⚫ ${player1Input.value} (Black)`;
+      createBoard();
+      stopConfetti();
+    });
+
+    createBoard();
+  </script>
+</body>
+</html>
