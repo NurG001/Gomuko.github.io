@@ -41,7 +41,7 @@ No installation of additional software or libraries is required, as this project
 
 ## 🔗 Links
 
-- [Live Demo](https://nurg001.github.io/CrystalBall.github.io/)
+- [Live Demo](https://nurg001.github.io/Gomuko.github.io/)
 
 ## License
 
