@@ -1,5 +1,5 @@
 # Gomoku - Two Player Game
-![Crystal Ball Demo](https://github.com/NurG001/CrystalBall.github.io/blob/main/assets/index.png)
+![Crystal Ball Demo](https://github.com/NurG001/Gomuko.github.io/blob/main/assets/index.png)
 ## Description
 
 Gomoku, also known as "Five in a Row," is a classic two-player strategy board game. The objective of the game is to place five stones in a row on a 15x15 grid, either horizontally, vertically, or diagonally.
