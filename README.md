@@ -39,6 +39,10 @@ No installation of additional software or libraries is required, as this project
 - Players take turns to place their stones (⚫ for Player 1, 🔵 for Player 2).
 - To win, a player must align five of their stones in a row, either horizontally, vertically, or diagonally.
 
+## 🔗 Links
+
+- [Live Demo](https://nurg001.github.io/CrystalBall.github.io/)
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
